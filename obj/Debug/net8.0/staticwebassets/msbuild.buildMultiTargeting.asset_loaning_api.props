@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="..\build\asset_loaning_api.props" />
+</Project>
