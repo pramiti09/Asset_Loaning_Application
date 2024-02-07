@@ -1,4 +1,4 @@
-﻿using asset_loaning_api.data;
+using asset_loaning_api.data;
 using asset_loaning_api.models.domains;
 using asset_loaning_api.models.DTOs;
 using Microsoft.AspNetCore.Mvc;
@@ -18,26 +18,34 @@ namespace asset_loaning_api.Repositories
             return;
         }
 
+        static class constants
+        {
+            public const string student = "Student";
+            public const string supervisor = "Supervisor";
+            public const string loan = "loan";
+            public const string Return = "return";
+        }
+
         public transactionDTO Create_transaction([FromBody] transactionDTO transactiondto)
         {
             //Only supervisor can create transaction
-            var user = dbContext.UserDetails.FirstOrDefault(u => u.userId == transactiondto.requesting_userid && u.role == "Supervisor");
+            var user = dbContext.UserDetails.FirstOrDefault(u => u.userId == transactiondto.requesting_userid && u.role == constants.supervisor);
             if (user == null)
             {
                 throw new KeyNotFoundException("Only supervisor can create transactions");
             }
             // Validate loan transaction request data
-            if (transactiondto.transaction_type == "loan")
+            if (transactiondto.transaction_type == constants.loan)
             {
 
-                var supervisor = dbContext.UserDetails.FirstOrDefault(u => u.userId == transactiondto.supervisorId && u.role == "Supervisor");
+                var supervisor = dbContext.UserDetails.FirstOrDefault(u => u.userId == transactiondto.supervisorId && u.role == constants.supervisor);
                 if (supervisor == null)
                 {
                    
                      throw new KeyNotFoundException("Invalid supervisor details"); ;
                 }
 
-                var student = dbContext.UserDetails.FirstOrDefault(u => u.userId == transactiondto.studentID && u.role == "Student");
+                var student = dbContext.UserDetails.FirstOrDefault(u => u.userId == transactiondto.studentID && u.role == constants.student);
                 if (student == null)
                 {
                     throw new KeyNotFoundException("Invalid student details");
@@ -63,7 +71,7 @@ namespace asset_loaning_api.Repositories
                     supervisorId = supervisor.userId,
                     studentID = student.userId,
                     assetId = asset.assetid,
-                    transaction_type = "loan",
+                    transaction_type = constants.loan,
                     transaction_date = date,
 
                 };
@@ -73,7 +81,7 @@ namespace asset_loaning_api.Repositories
             }
             else
             {
-                var returning_supervisor = dbContext.UserDetails.FirstOrDefault(u => u.userId == transactiondto.returning_supervisorId && u.role == "Supervisor");
+                var returning_supervisor = dbContext.UserDetails.FirstOrDefault(u => u.userId == transactiondto.returning_supervisorId && u.role == constants.supervisor);
                 if (returning_supervisor == null)
                 {
                     throw new KeyNotFoundException("Invalid Returning Supervisor Details");
@@ -103,7 +111,7 @@ namespace asset_loaning_api.Repositories
                     supervisorId = previous_details.supervisorId,
                     studentID = previous_details.studentID,
                     assetId = previous_details.assetId,
-                    transaction_type = "return",
+                    transaction_type = constants.Return,
                     transaction_date = date,
                     returning_supervisorId = transactiondto.returning_supervisorId
                 };
@@ -142,13 +150,13 @@ namespace asset_loaning_api.Repositories
             {
                 throw new KeyNotFoundException("Choose filters");
             }
-            if (user.role == "Student")
+            if (user.role == constants.student)
             {
                 if (studentId != null && studentId!= userid)
                 {
                     throw new KeyNotFoundException("Cannot access other students records");
                 }
-                else if (userid == studentId )
+                else if (studentId!=null && userid == studentId )
                 {
                     TransactionRecords = dbContext.transactions.Where(s => s.studentID == userid).ToList();
                 }
@@ -194,7 +202,7 @@ namespace asset_loaning_api.Repositories
             }
             
             List<GetTransaction> FilteredTransactions = new List<GetTransaction>();
-            if (supervisorId != null && user.role == "Supervisor")
+            if (supervisorId != null && user.role == constants.supervisor)
             {
                 foreach (var i in transaction)
                 {
@@ -207,11 +215,11 @@ namespace asset_loaning_api.Repositories
                 transaction.AddRange(FilteredTransactions);
                 FilteredTransactions.Clear();
             }
-            else if(supervisorId != null && user.role == "Student")
+            else if(supervisorId != null && user.role == constants.student)
             {
                 throw new KeyNotFoundException("Students cannot access supervisor's records");
             }
-            if (studentId != null && user.role == "Supervisor")
+            if (studentId != null && user.role == constants.supervisor)
             {
 
                 foreach (var i in transaction)
@@ -226,7 +234,7 @@ namespace asset_loaning_api.Repositories
                 FilteredTransactions.Clear();
             }   
 
-            if (user.role == "Supervisor" && transactionId != null)
+            if (user.role == constants.supervisor   && transactionId != null)
             {
                 var transactiondetails = dbContext.transactions.Where(t => t.transactionID == transactionId);
                 if (transactiondetails == null)
@@ -247,9 +255,32 @@ namespace asset_loaning_api.Repositories
                     transaction.AddRange(FilteredTransactions);
                     FilteredTransactions.Clear();
                 }
-            }else if(user.role == "Student" && transactionId != null)
+            }
+            if(user.role == constants.student && transactionId != null)
             {
-                throw new KeyNotFoundException("Student cannot access through transaction ID");
+                var transactiondetails = dbContext.transactions.Where(t => t.transactionID == transactionId).FirstOrDefault();
+                if (transactiondetails == null)
+                {
+                    throw new KeyNotFoundException("No record found");
+                }
+                if (transactiondetails.studentID != userid)
+                {
+                    throw new KeyNotFoundException("Cannot access other students record");
+                }
+                
+                foreach (var i in transaction)
+                {
+
+                   if (i.transactionId == transactionId)
+                   {
+                            FilteredTransactions.Add(i);
+                   }
+
+                }
+                transaction.Clear();
+                transaction.AddRange(FilteredTransactions);
+                FilteredTransactions.Clear();
+                
             }
 
             if (assetId != null)
@@ -266,7 +297,7 @@ namespace asset_loaning_api.Repositories
                 transaction.AddRange(FilteredTransactions);
                 FilteredTransactions.Clear();
             }
-            if (!string.IsNullOrEmpty(transaction_date) && (user.role == "Student" || user.role == "Supervisor"))
+            if (!string.IsNullOrEmpty(transaction_date) && (user.role == constants.student || user.role == constants.supervisor))
             {
                 var date = DateOnly.MaxValue;
                 try
@@ -296,7 +327,7 @@ namespace asset_loaning_api.Repositories
         // Updating a transaction
         public transactions UpdateTransaction([FromBody] UpdateTransactionDTO updatetransactiondto)
         {
-            var user = dbContext.UserDetails.FirstOrDefault(u => u.userId == updatetransactiondto.requesting_userid && u.role == "Supervisor");
+            var user = dbContext.UserDetails.FirstOrDefault(u => u.userId == updatetransactiondto.requesting_userid && u.role == constants.supervisor);
             if (user == null)
             {
                 throw new KeyNotFoundException("Only supervisors can update transaction");
@@ -316,7 +347,7 @@ namespace asset_loaning_api.Repositories
 
             if (updatetransactiondto.supervisorId != null)
             {
-                var supervisor = dbContext.UserDetails.FirstOrDefault(u => u.userId == updatetransactiondto.supervisorId && u.role == "Supervisor");
+                var supervisor = dbContext.UserDetails.FirstOrDefault(u => u.userId == updatetransactiondto.supervisorId && u.role == constants.supervisor);
                 if (supervisor == null)
                 {
                     throw new KeyNotFoundException("Invalid supervisor details");
@@ -330,7 +361,7 @@ namespace asset_loaning_api.Repositories
             if (updatetransactiondto.studentID != null)
             {
 
-                var student = dbContext.UserDetails.FirstOrDefault(u => u.userId == updatetransactiondto.studentID && u.role == "Student");
+                var student = dbContext.UserDetails.FirstOrDefault(u => u.userId == updatetransactiondto.studentID && u.role == constants.student);
                 if (student == null)
                 {
                     throw new KeyNotFoundException("Invalid student details");
@@ -358,7 +389,7 @@ namespace asset_loaning_api.Repositories
             if (updatetransactiondto.returning_supervisorId != null)
             {
 
-                var returning_supervisor = dbContext.UserDetails.FirstOrDefault(u => u.userId == updatetransactiondto.returning_supervisorId && u.role == "Supervisor");
+                var returning_supervisor = dbContext.UserDetails.FirstOrDefault(u => u.userId == updatetransactiondto.returning_supervisorId && u.role == constants.supervisor);
                 if (returning_supervisor == null)
                 {
                     throw new KeyNotFoundException("Invalid returning supervisor details");
@@ -371,7 +402,7 @@ namespace asset_loaning_api.Repositories
 
             if (updatetransactiondto.transaction_type != null)
             {
-                if (updatetransactiondto.transaction_type == "loan" || updatetransactiondto.transaction_type == "return")
+                if (updatetransactiondto.transaction_type == constants.loan || updatetransactiondto.transaction_type == constants.Return)
                 {
 
                     existing_transaction.transaction_type = updatetransactiondto.transaction_type;
