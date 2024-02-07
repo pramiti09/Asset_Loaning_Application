@@ -1,4 +1,4 @@
-﻿using asset_loaning_api.data;
+using asset_loaning_api.data;
 using asset_loaning_api.models.domains;
 using asset_loaning_api.models.DTOs;
 using asset_loaning_api.Services;
@@ -27,17 +27,33 @@ namespace asset_loaning_api.Controllers
         [HttpPost]
         public IActionResult Create_transaction([FromBody] transactionDTO transactiondto)
         {
-           var data = transactionservice.Create_transaction(transactiondto);
-            return Ok(data);
+            try
+            {
+
+
+                var data = transactionservice.Create_transaction(transactiondto);
+                return Ok(data);
+            } catch (Exception ex)
+            {
+                throw;
+            }
         }
 
         // Update a transaction
         [HttpPut]
         public IActionResult UpdateTransaction([FromBody] UpdateTransactionDTO updatetransactiondto)
         {
+            try
+            {
 
-            var data = transactionservice.UpdateTransaction(updatetransactiondto);
-            return Ok(data);
+
+                var data = transactionservice.UpdateTransaction(updatetransactiondto);
+                return Ok(data);
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
         }
 
        
@@ -45,8 +61,16 @@ namespace asset_loaning_api.Controllers
         [HttpGet]
         public IActionResult GetTransaction(Guid userid, [FromQuery] Guid? transactionId, [FromQuery] Guid? supervisorId,[FromQuery] Guid? studentId, [FromQuery] Guid? assetId, [FromQuery] string? transaction_date) 
         {
-            var data = transactionservice.GetTransaction(userid, transactionId,supervisorId,studentId, assetId, transaction_date );
-            return Ok(data);
+            try
+            {
+
+
+                var data = transactionservice.GetTransaction(userid, transactionId, supervisorId, studentId, assetId, transaction_date);
+                return Ok(data);
+            }catch (Exception ex)
+            {
+                throw;
+            }
         }
     }
 
